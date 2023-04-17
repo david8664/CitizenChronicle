@@ -1,6 +1,6 @@
 let people = [] // array to store people
 const init = () => {
-    people[0] = new getPerson("John", "Doe", "123456789", "New York", "01/01/1990", "")
+    people[0] = new getPerson("John", "Doe", "123456789", "New York", "14/10/1999", "")
     people[1] = new getPerson("Alice", "Smith", "987654321", "Los Angeles", "14/02/1985", "123456789")
     people[2] = new getPerson("Bob", "Johnson", "456123789", "Chicago", "10/05/1978", "")
     people[3] = new getPerson("Jane", "Doe", "321654987", "Houston", "27/11/2000", "123456789")
@@ -10,6 +10,7 @@ const init = () => {
     people[7] = new getPerson("Sarah", "Taylor", "456789123", "Dallas", "18/06/1992", "321789654")
     people[8] = new getPerson("Tom", "Brown", "789321456", "Seattle", "05/12/1982", "")
     people[9] = new getPerson("Olivia", "Wilson", "789456123", "Washington", "15/03/2001", "789321456")
+    people[10] = new getPerson("John", "Doe", "123123119", "New York", "14/03/2023", "321654987")
 }
 
 function menu() {
@@ -44,7 +45,7 @@ function menu() {
                 addPerson();
                 break;
             case "2":
-                deletePerson(prompt("The ID"));
+                alert(deletePerson(prompt("The ID")));
                 break;
             case "3":
                 edit(dbMatcher(prompt("The ID"), "id"));
@@ -77,11 +78,13 @@ function getPerson(firstName, lastName, id, city, dob, parentId) {
         lastName,
         id,
         age: function () {
-            const [day, month, year] = this.dob.concat().split('/');
-            const birthDateObj = new Date(year, month - 1, day);
-            const ageDiffMs = Date.now() - birthDateObj.getTime();
-            const ageDate = new Date(ageDiffMs);
-            return Math.abs(ageDate.getUTCFullYear() - 1970);
+            let [day, month, year] = this.dob.split('/').map(v => Number(v));
+            let now = new Date();
+            let age = now.getUTCFullYear() - year - ((now.getUTCMonth() < month - 1 || (now.getUTCMonth() == month - 1 && now.getUTCDate() < day)) ? 1 : 0);
+            let months = (now.getUTCMonth() + 12) - (month - 1) - ((now.getUTCDate() < day) ? 1 : 0);
+            months = months % 12;
+            let ageInMonths = age * 12 + months;
+            return((ageInMonths / 12).toFixed(1));
         },
         city,
         dob,
@@ -90,107 +93,86 @@ function getPerson(firstName, lastName, id, city, dob, parentId) {
 }
 
 function addPerson() {
-    let firstName = validateName(prompt("Enter first name:")),
-        lastName = validateName(prompt("Enter last name:")),
-        id = validateIDCard(prompt("Enter ID:")),
-        city = validateName(prompt("Enter city:")),
-        dob = validateDate(prompt("Enter date of birth (DD/MM/YYYY):")),
-        parentId = validateIDCard(prompt("Enter parent's ID (optional):"), "parentId");
-    parentId = checkingDifferentIds(parentId, id);
+    let firstName = validate(prompt("Enter first name:"), "name"),
+        lastName = validate(prompt("Enter last name:"), "name"),
+        id = validate(prompt("Enter ID:"), "id"),
+        city = validate(prompt("Enter city:"), "name"),
+        dob = validate(prompt("Enter date of birth (DD/MM/YYYY):"), "dob"),
+        parentId = validate(prompt("Enter parent's ID (optional):"), "parentId");
+    parentId = notSameParentId(parentId, id);
     people.push(getPerson(firstName, lastName, id, city, dob, parentId));
     alert("The person has been added successfully");
     return;
 }
 
-function checkingDifferentIds(parent, child) {
+function validate(value, type) {
+    let errorMessage, regex, currentDay, currentMonth, currentYear;
+    switch (type) {
+        case "name":
+            regex = /^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$/;
+            errorMessage = "Invalid name. Please enter a valid name:";
+            break;
+        case "parentId":
+            if (value == "") return value;
+        case "id":
+            regex = /^[0-9]{9}$/;
+            errorMessage = "Invalid ID card number. Please enter a valid 9-digit number:";
+            break;
+        case "dob":
+            regex = /^(?:(?:31\/(?:0?[13578]|1[02]))\/|(?:(?:29|30)\/(?:0?[13-9]|1[0-2])\/))(?:(?:1[6-9]|[2-9]\d)\d{2})$|^(?:29\/0?2\/(?:(?:(?:1[6-9]|[2-9]\d)(?:0[48]|[2468][048]|[13579][26])|(?:16|[2468][048]|[3579][26])00)))$|^(?:0?[1-9]|1\d|2[0-8])\/(?:0?[1-9]|1[0-2])\/(?:(?:1[6-9]|[2-9]\d)\d{2})$/;
+            errorMessage = "Invalid date format. Please enter a date in the format DD/MM/YYYY:";
+            let = [day, month, year] = value.split('/');
+            currentDay = new Date().getUTCDate();
+            currentMonth = new Date().getUTCMonth() + 1;
+            currentYear = new Date().getUTCFullYear();
+            break;
+        case "age":
+            regex = /^(1[0-9]{1,2}|[1-9][0-9]|[1-9])$/;
+            errorMessage = "Invalid age. Please enter a age between 1 and 120:";
+            break;
+    }
+
+    while (true) {
+        if (!regex.test(value)) {
+            value = prompt(errorMessage);
+        }
+        else if (type === "id" && dbMatcher(value, type).length > 0) {
+            value = prompt("The id already exist. Please enter a different ID:");
+        }
+        else if (type === "dob" && (year > currentYear || (month > currentMonth && year == currentYear) || (day > currentDay && month == currentMonth && year == currentYear))) {
+            value = prompt("Invalid date. Please enter a date in the past:");
+            [day, month, year] = value.split('/');
+        }
+        else { break; }
+    }
+    if (type == "name") value = value.split(" ").map(str => str[0].toUpperCase() + str.slice(1)).toString(" ");
+    return value;
+}
+
+function notSameParentId(parent, child) {
     while (parent == child) {
-        parent = validateIDCard(prompt("It is not possible to insert the same ID into a private ID"));
+        parent = validate(prompt("Enter a different parent ID:"), "parentId");
     }
     return parent;
 }
 
-function validateIDCard(idNumber, belongs = "id") {
-    if (idNumber == "" && belongs == "parentId") {
-        return idNumber;
-    }
-    const idRegex = /^[0-9]{9}$/;
-    while (!idRegex.test(idNumber)) {
-        idNumber = prompt("Invalid ID card number. Please enter a valid 9-digit number:");
-    }
-    if (belongs == "parentId") {
-        return idNumber;
-    }
-    else if (dbMatcher(idNumber, belongs).length > 0) {
-        idNumber = prompt("The id already exist. Please enter a different ID:");
-        return validateIDCard(idNumber, belongs);
-    }
-    return idNumber;
-}
-
-function validateDate(date) {
-    const dateRegex = /^(?:(?:31\/(?:0?[13578]|1[02]))\/|(?:(?:29|30)\/(?:0?[13-9]|1[0-2])\/))(?:(?:1[6-9]|[2-9]\d)\d{2})$|^(?:29\/0?2\/(?:(?:(?:1[6-9]|[2-9]\d)(?:0[48]|[2468][048]|[13579][26])|(?:16|[2468][048]|[3579][26])00)))$|^(?:0?[1-9]|1\d|2[0-8])\/(?:0?[1-9]|1[0-2])\/(?:(?:1[6-9]|[2-9]\d)\d{2})$/;
-
-    while (!dateRegex.test(date)) {
-        date = prompt("Invalid date format. Please enter a date in the format DD/MM/YYYY:");
-    }
-    // Check if the entered date is in the past
-    if (new Date(date) > new Date()) {
-        date = prompt("Invalid date. Please enter a date in the past:");
-        return validateDate(date);
-    }
-    return date;
-}
-
-function validateName(name) {
-    const nameRegex = /^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$/;
-    while (!nameRegex.test(name)) {
-        name = prompt(`Invalid name. Please enter a valid name:`);
-    }
-    return name;
-}
-
-function validAge(age) {
-    const ageRegex = /^(1[0-9]{1,2}|[1-9][0-9]|[1-9])$/;
-    while (!ageRegex.test(age)) {
-        age = prompt('Invalid age. Please enter a age between 1 and 120:');
-    }
-    return age;
-}
-
-function dbMatcher(value, key, partialSearch = false) {
+function dbMatcher(valueSearch, key, partialSearch = false) {
     // Returns the index where the value is found
-    findings = [];
-    for (i in people) {
-        if (partialSearch && people[i][key].includes(value)) {
-            findings.push(i);
-        }
-        else if (people[i][key] === value) {
-            findings.push(i);
-        }
-    }
+    let findings = people.flatMap((person, index) => {
+        if (partialSearch && people[index][key].includes(valueSearch)) return index;
+        else if (people[index][key] === valueSearch) return index;
+        else return [];
+    })
     return findings;
 }
 
-function deletePerson(idNumber) { // delete grandfather
-    children = dbMatcher(idNumber, "parentId");
-    if (children.length > 0) {
-        counter = 0;
-        for (child in children) {
-            children[child] = Number(children[child]) + counter; // Arranges the deletion places.
-            people.splice(children[child], 1);
-            counter--;
-        }
-    }
-    parent = [].concat(people.findIndex((v, i) => v.id == idNumber));
-    if (parent.length > 0) {
-        people.splice(Number(parent[0]), 1);
-    }
-    if (parent.length + children.length > 0) {
-        alert("The deletion was successful");
-        return;
-    }
-    alert("The ID was not found");
-    return;
+function deletePerson(idNumber) {
+    const children = dbMatcher(idNumber, "parentId");
+    for (const childIndex of children) deletePerson(people[childIndex].id);
+    const parentIndex = people.findIndex((person) => person && person.id === idNumber);
+    delete people[parentIndex];
+    people = people.filter(Boolean); // remove empty slots
+    return children.length ? "The deletion was successful" : "The ID was not found";
 }
 
 function edit(personIndex) {
@@ -206,20 +188,20 @@ function edit(personIndex) {
     5. Parent's ID`)
     switch (choice) {
         case "1":
-            people[personIndex].id = validateIDCard(prompt("Enter ID:"));
+            people[personIndex].id = validate(prompt("Enter ID:"), "id");
             break;
         case "2":
-            people[personIndex].firstName = validateName(prompt("Enter first name:"));
+            people[personIndex].firstName = validate(prompt("Enter first name:"), "name");
             break;
         case "3":
-            people[personIndex].lastName = validateName(prompt("Enter last name:"));
+            people[personIndex].lastName = validate(prompt("Enter last name:"), "name");
             break;
         case "4":
-            people[personIndex].city = validateName(prompt("Enter city:"));
+            people[personIndex].city = validate(prompt("Enter city:"), "name");
             break;
         case "5":
-            parent = validateIDCard(prompt("Enter parent's ID:"), "parentId");
-            people[personIndex].parentId = checkingDifferentIds(parent, people[personIndex].id);
+            parent = validate(prompt("Enter parent's ID:"), "parentId");
+            people[personIndex].parentId = notSameParentId(parent, people[personIndex].id);
             break;
         default:
             alert("Invalid choice. Please choose again.");
@@ -230,7 +212,7 @@ function edit(personIndex) {
 }
 
 function printPerson(id) {
-    personIndex = dbMatcher(id, "id");
+    let personIndex = dbMatcher(id, "id");
     if (personIndex.length > 0) {
         flag = confirm("Would you like to see the children too?");
         if (flag) personIndex = personIndex.concat(showChildren(id));
@@ -253,7 +235,7 @@ ${peopleIndex[peopleIndex.length - 1] != index ? "-".repeat(29) : ""}`;
 }
 
 function search() {
-    choice = prompt(`
+    let choice = prompt(`
     Please select your search option:
     1. Text - first name or last name
     2. ID`)
@@ -275,7 +257,7 @@ function search() {
 }
 
 function cutsQueriesAndReports() {
-    choice = prompt(`
+    let choice = prompt(`
     Please select the option you wish to view [1-4]:
     1. People over a certain age
     2. Children of a certain person
@@ -286,17 +268,17 @@ function cutsQueriesAndReports() {
     4. Presentation of all the cities and their inhabitants`)
     switch (choice) {
         case "1":
-            age = Number(validAge(prompt("Enter the age:")));
-            index = showPeopleOverAge(age);
+            let age = Number(validate(prompt("Enter the age:"), "age")),
+                index = showPeopleOverAge(age);
             alert(printTemplate(index));
             break;
         case "2":
-            id = prompt("Enter ID:");
+            let id = prompt("Enter ID:");
             alert(printTemplate(showChildren(id)));
             break;
         case "3":
-            palindromePeople = [];
-            people.forEach((person, personIndex) => {
+            let palindromePeople = [];
+            people.filter((person, personIndex) => {
                 if (isPalindromeName(personIndex)) palindromePeople.push(personIndex);
                 childIndex = showChildren(person.id);
                 childIndex.forEach((child) => {
@@ -306,12 +288,17 @@ function cutsQueriesAndReports() {
             alert(printTemplate(bornInEvenMonth().concat(hasAtLeastTwoChildren(), palindromePeople).filter((value, index, self) => self.indexOf(value) === index)));
             break;
         case "4":
-            alert(showCityAndItsInhabitants());
+            alert(showCitiesAndCitizens());
             break;
         default:
             alert("Invalid choice. Please choose again.");
             return cutsQueriesAndReports();
     }
+}
+function bornInEvenMonth() {
+    let evenMonthPeople = [];
+    people.forEach((person, index) => { if (person.dob.split("/", 2)[1] % 2 === 0) evenMonthPeople.push(index); });
+    return evenMonthPeople;
 }
 
 function isPalindromeText(text) {
@@ -328,41 +315,36 @@ function isPalindromeName(idIndex) {
     return false;
 }
 
+function hasAtLeastTwoChildren() {
+    let parents = people.flatMap((person, index) => { return showChildren(person.id).length >= 2 ? index : [] })
+    return parents;
+}
+
 function showChildren(idNumber) {
     childrenIndex = dbMatcher(idNumber, "parentId");
     return childrenIndex;
 }
 
 function showPeopleOverAge(personAge) {
-    arrayOfIndexes = [];
+    let arrayOfIndexes = [];
     people.forEach((person, index) => { if (Number(person.age()) >= personAge) arrayOfIndexes.push(index) });
     return arrayOfIndexes;
 }
 
-function showCityAndItsInhabitants() {
-    cityList = people.forEach(person => person.city).filter((city, i) => !city.includes(city, i + 1));
-    everyCityAndItsInhabitants = "";
-    for (city of cityList) {
-        inhabitants = dbMatcher(city, "city");
-        everyCityAndItsInhabitants += printTemplate(inhabitants, city);
-    }
-    return everyCityAndItsInhabitants;
+function showCitiesAndCitizens() {
+    // Take all cities
+    let allCitiesName = people.flatMap(person => person.city),
+        // Remove duplicates cities
+        citiesList = allCitiesName.filter((city, index, cities) => !cities.includes(city, index + 1)),
+        citiesAndCitizens = "",
+        citizens = [];
+    citiesList.forEach(city => { 
+        citizens = dbMatcher(city, "city");
+        citiesAndCitizens += printTemplate(citizens, `\n----${city}----\n`);
+    })
+    return citiesAndCitizens;
 }
 
-function bornInEvenMonth() {
-    evenMonthPeople = [];
-    people.forEach((person, index) => { if (person.dob.split("/", 2)[1] % 2 === 0) evenMonthPeople.push(index); });
-    return evenMonthPeople;
-}
-
-function hasAtLeastTwoChildren() {
-    parents = [];
-    people.forEach((person, index) => {
-        if (showChildren(person.id).length >= 2) {
-            parents.push(index);
-        }
-    });
-    return parents;
-}
 init();
 menu();
+
