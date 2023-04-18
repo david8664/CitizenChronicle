@@ -78,15 +78,15 @@ function getPerson(firstName, lastName, id, city, dob, parentId) {
         lastName,
         id,
         age: function () {
-            const [birthDay, birthMonth, birthYear] = this.dob.split('/').map(Number);
-            const now = new Date();
-            const currentDay = now.getUTCDate();
-            const currentMonth = now.getUTCMonth() + 1;
-            const currentYear = now.getUTCFullYear();
+            const [birthDay, birthMonth, birthYear] = this.dob.split('/').map(Number),
+                now = new Date(),
+                currentDay = now.getUTCDate(),
+                currentMonth = now.getUTCMonth() + 1,
+                currentYear = now.getUTCFullYear();
 
-            let daysDiff = currentDay - birthDay;
-            let monthsDiff = currentMonth - birthMonth;
-            let yearsDiff = currentYear - birthYear;
+            let daysDiff = currentDay - birthDay,
+                monthsDiff = currentMonth - birthMonth,
+                yearsDiff = currentYear - birthYear;
 
             if (daysDiff < 0) {
                 daysDiff += new Date(currentYear, currentMonth - 1, 0).getDate();
@@ -98,7 +98,7 @@ function getPerson(firstName, lastName, id, city, dob, parentId) {
                 yearsDiff--;
             }
 
-            return `${yearsDiff} years, ${monthsDiff} months, and ${daysDiff} days old.`;
+            return `${yearsDiff}  years, ${monthsDiff} months, and ${daysDiff} days old.`;
 
         },
         city,
@@ -160,7 +160,7 @@ function validate(value, type) {
         }
         else { break; }
     }
-    if (type == "name") value = value.split(" ").map(str => str[0].toUpperCase() + str.slice(1)).toString(" ");
+    if (type == "name") value = value.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
     return value;
 }
 
@@ -229,7 +229,7 @@ function edit(personIndex) {
 function printPerson(id) {
     let personIndex = dbMatcher(id, "id");
     if (personIndex.length > 0) {
-        flag = confirm("Would you like to see the children too?");
+        let flag = confirm("Would you like to see the children too?");
         if (flag) personIndex = personIndex.concat(showChildren(id));
     }
     alert(printTemplate(personIndex));
@@ -342,7 +342,7 @@ function showChildren(idNumber) {
 
 function showPeopleOverAge(personAge) {
     let arrayOfIndexes = [];
-    people.forEach((person, index) => { if (Number(person.age()) >= personAge) arrayOfIndexes.push(index) });
+    people.filter((person, index) => { if (Number(person.age().slice(0, 3)) >= personAge) arrayOfIndexes.push(index) });
     return arrayOfIndexes;
 }
 
