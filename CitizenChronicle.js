@@ -78,13 +78,28 @@ function getPerson(firstName, lastName, id, city, dob, parentId) {
         lastName,
         id,
         age: function () {
-            let [day, month, year] = this.dob.split('/').map(v => Number(v));
-            let now = new Date();
-            let age = now.getUTCFullYear() - year - ((now.getUTCMonth() < month - 1 || (now.getUTCMonth() == month - 1 && now.getUTCDate() < day)) ? 1 : 0);
-            let months = (now.getUTCMonth() + 12) - (month - 1) - ((now.getUTCDate() < day) ? 1 : 0);
-            months = months % 12;
-            let ageInMonths = age * 12 + months;
-            return((ageInMonths / 12).toFixed(1));
+            const [birthDay, birthMonth, birthYear] = this.dob.split('/').map(Number);
+            const now = new Date();
+            const currentDay = now.getUTCDate();
+            const currentMonth = now.getUTCMonth() + 1;
+            const currentYear = now.getUTCFullYear();
+
+            let daysDiff = currentDay - birthDay;
+            let monthsDiff = currentMonth - birthMonth;
+            let yearsDiff = currentYear - birthYear;
+
+            if (daysDiff < 0) {
+                daysDiff += new Date(currentYear, currentMonth - 1, 0).getDate();
+                monthsDiff--;
+            }
+
+            if (monthsDiff < 0) {
+                monthsDiff += 12;
+                yearsDiff--;
+            }
+
+            return `${yearsDiff} years, ${monthsDiff} months, and ${daysDiff} days old.`;
+
         },
         city,
         dob,
@@ -167,12 +182,12 @@ function dbMatcher(valueSearch, key, partialSearch = false) {
 }
 
 function deletePerson(idNumber) {
-    const children = dbMatcher(idNumber, "parentId");
-    for (const childIndex of children) deletePerson(people[childIndex].id);
+    const descendants = dbMatcher(idNumber, "parentId");
+    for (const descendantIndex of descendants) deletePerson(people[descendantIndex].id);  // descendants
     const parentIndex = people.findIndex((person) => person && person.id === idNumber);
     delete people[parentIndex];
     people = people.filter(Boolean); // remove empty slots
-    return children.length ? "The deletion was successful" : "The ID was not found";
+    return descendants.length ? "The deletion was successful" : "The ID was not found";
 }
 
 function edit(personIndex) {
@@ -338,7 +353,7 @@ function showCitiesAndCitizens() {
         citiesList = allCitiesName.filter((city, index, cities) => !cities.includes(city, index + 1)),
         citiesAndCitizens = "",
         citizens = [];
-    citiesList.forEach(city => { 
+    citiesList.forEach(city => {
         citizens = dbMatcher(city, "city");
         citiesAndCitizens += printTemplate(citizens, `\n----${city}----\n`);
     })
